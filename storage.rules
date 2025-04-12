@@ -1,0 +1,43 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidFileType() {
+      return request.resource.contentType.matches('application/pdf');
+    }
+
+    function isValidFileSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB
+    }
+
+    // Allow public read access to all files
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Collateral documents
+    match /collaterals/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if isOwner(userId) 
+                   && isValidFileType()
+                   && isValidFileSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // Profile photos
+    match /profile-photos/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId)
+                  && request.resource.contentType.matches('image/.*')
+                  && request.resource.size <= 5 * 1024 * 1024; // 5MB
+    }
+  }
+}
