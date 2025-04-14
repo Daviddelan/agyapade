@@ -12,7 +12,10 @@ interface UserData {
   firstName: string;
   lastName: string;
   title: string;
-  lastLogin?: Date;
+  lastLogin?: {
+    seconds: number;
+    nanoseconds: number;
+  };
 }
 
 interface Document {
@@ -37,7 +40,7 @@ export default function Dashboard() {
       if (!user) return;
 
       try {
-        // Fetch user data using the correct Firestore methods
+        // Fetch user data
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         
@@ -45,7 +48,7 @@ export default function Dashboard() {
           setUserData(userDocSnap.data() as UserData);
         }
 
-        // Fetch documents using the correct Firestore methods
+        // Fetch documents
         const docsQuery = query(
           collection(db, 'documents'),
           where('userId', '==', user.uid),
@@ -72,12 +75,28 @@ export default function Dashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (!userData) return 'Welcome';
+    
+    const name = userData.title ? `${userData.title} ${userData.lastName}` : userData.firstName;
+    
     if (hour >= 5 && hour < 12) {
-      return `Good morning, ${userData?.title} ${userData?.lastName} ☀️`;
+      return `Good morning, ${name} ☀️`;
     } else if (hour >= 12 && hour < 17) {
-      return `Good afternoon, ${userData?.firstName} 👋`;
+      return `Good afternoon, ${name} 👋`;
     } else {
-      return `Good evening, ${userData?.firstName} ${userData?.lastName} 🌙`;
+      return `Good evening, ${name} 🌙`;
+    }
+  };
+
+  const formatLastLogin = () => {
+    if (!userData?.lastLogin) return 'N/A';
+    
+    try {
+      const date = new Date(userData.lastLogin.seconds * 1000);
+      return format(date, 'MMM dd');
+    } catch (error) {
+      console.error('Error formatting last login date:', error);
+      return 'N/A';
     }
   };
 
@@ -152,7 +171,7 @@ export default function Dashboard() {
           >
             <h3 className="text-lg font-medium text-gray-900">Last Login</h3>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {userData?.lastLogin ? format(userData.lastLogin, 'MMM dd') : 'N/A'}
+              {formatLastLogin()}
             </p>
             <p className="text-sm text-gray-500 mt-1">Previous session</p>
           </motion.div>

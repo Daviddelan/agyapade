@@ -11,7 +11,7 @@ service firebase.storage {
     }
 
     function isValidFileType() {
-      return request.resource.contentType.matches('application/pdf');
+      return request.resource.contentType.matches('application/pdf|image/.*');
     }
 
     function isValidFileSize() {
@@ -23,12 +23,24 @@ service firebase.storage {
       allow read: if true;
     }
     
-    // Collateral documents
+    // Identification documents during registration
+    match /identification/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if true && isValidFileType() && isValidFileSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // Additional documents during registration
+    match /additional-documents/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if true && isValidFileType() && isValidFileSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // Collateral documents after registration
     match /collaterals/{userId}/{fileName} {
       allow read: if true;
-      allow create: if isOwner(userId) 
-                   && isValidFileType()
-                   && isValidFileSize();
+      allow create: if isOwner(userId) && isValidFileType() && isValidFileSize();
       allow delete: if isOwner(userId);
     }
     
@@ -41,3 +53,4 @@ service firebase.storage {
     }
   }
 }
+

@@ -11,7 +11,8 @@ import {
   where,
   getDocs,
   getDoc,
-  deleteDoc
+  deleteDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { 
@@ -95,11 +96,60 @@ export { app, analytics, db, storage, auth };
 export const loginWithEmailAndPassword = async (email: string, password: string) => {
   return withRetry(async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if user document exists
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
+      if (!userDoc.exists()) {
+        // If user document doesn't exist, fetch data from individualRegistrations
+        const registrationsQuery = query(
+          collection(db, 'individualRegistrations'),
+          where('firebaseUid', '==', userCredential.user.uid)
+        );
+        
+        const registrationDocs = await getDocs(registrationsQuery);
+        
+        if (!registrationDocs.empty) {
+          const registrationData = registrationDocs.docs[0].data();
+          
+          // Create user document with basic information and role
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            firstName: registrationData.firstName,
+            lastName: registrationData.surname,
+            title: registrationData.title,
+            email: registrationData.email,
+            role: 'user', // Set default role
+            createdAt: registrationData.createdAt,
+            lastLogin: serverTimestamp()
+          });
+        } else {
+          // If no registration data found, create minimal user document
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            email: userCredential.user.email,
+            role: 'user', // Set default role
+            createdAt: serverTimestamp(),
+            lastLogin: serverTimestamp()
+          });
+        }
+      } else {
+        // Update last login time
+        await updateDoc(doc(db, 'users', userCredential.user.uid), {
+          lastLogin: serverTimestamp()
+        });
+      }
+
+      // Return the user role
+      const updatedUserDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      const userData = updatedUserDoc.data();
+      
+      return {
+        user: userCredential.user,
+        role: userData?.role || 'user'
+      };
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Map Firebase errors to user-friendly messages
       switch (error.code) {
         case 'auth/invalid-credential':
         case 'auth/user-not-found':
@@ -500,6 +550,14 @@ export const submitIndividualRegistration = async (formData: any, sessionId: str
       try {
         console.log('Storing registration data in Firestore');
         await setDoc(doc(db, 'individualRegistrations', userId), registrationData);
+        
+        // Create user profile
+        await createUserProfile(firebaseUser.uid, {
+          firstName: formData.firstName,
+          lastName: formData.surname,
+          title: formData.title,
+          email: formData.email
+        });
       } catch (error) {
         // If Firestore storage fails, clean up the created auth user
         await firebaseUser.delete();
@@ -517,6 +575,24 @@ export const submitIndividualRegistration = async (formData: any, sessionId: str
     }
   });
 };
+
+export const createUserProfile = async (userId: string, userData: any) => {
+  return withRetry(async () => {
+    try {
+      // Create user profile document with default role
+      await setDoc(doc(db, 'users', userId), {
+        ...userData,
+        role: 'user', // Set default role
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error creating user profile:', error);
+      throw new Error('Failed to create user profile');
+    }
+  });
+};
+
 
 export const sendVerificationCode = async (userId: string, recaptchaContainerId: string): Promise<any> => {
   return withRetry(async () => {
@@ -583,29 +659,29 @@ export const sendVerificationCode = async (userId: string, recaptchaContainerId:
   });
 };
 
-export const verifyPhoneCode = async (verificationId: string, code: string): Promise<void> => {
-  return withRetry(async () => {
-    try {
-      console.log('Verifying code:', { verificationId });
+// export const verifyPhoneCode = async (verificationId: string, code: string): Promise<void> => {
+//   return withRetry(async () => {
+//     try {
+//       console.log('Verifying code:', { verificationId });
       
-      const credential = PhoneAuthProvider.credential(verificationId, code);
-      await auth.currentUser?.linkWithCredential(credential);
+//       const credential = PhoneAuthProvider.credential(verificationId, code);
+//       await auth.currentUser?.linkWithCredential(credential);
       
-      console.log('Phone number verified successfully');
+//       console.log('Phone number verified successfully');
       
-      // Clean up reCAPTCHA after successful verification
-      cleanupRecaptcha();
-    } catch (error: any) {
-      console.error('Error verifying code:', error);
-      if (error.code === 'auth/invalid-verification-code') {
-        throw new Error('Invalid verification code. Please check and try again.');
-      } else if (error.code === 'auth/code-expired') {
-        throw new Error('Verification code has expired. Please request a new code.');
-      }
-      throw new Error('Failed to verify code. Please try again.');
-    }
-  });
-};
+//       // Clean up reCAPTCHA after successful verification
+//       cleanupRecaptcha();
+//     } catch (error: any) {
+//       console.error('Error verifying code:', error);
+//       if (error.code === 'auth/invalid-verification-code') {
+//         throw new Error('Invalid verification code. Please check and try again.');
+//       } else if (error.code === 'auth/code-expired') {
+//         throw new Error('Verification code has expired. Please request a new code.');
+//       }
+//       throw new Error('Failed to verify code. Please try again.');
+//     }
+//   });
+// };
 
 export const getUserData = async (userId: string) => {
   return withRetry(async () => {

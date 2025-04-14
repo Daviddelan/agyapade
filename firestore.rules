@@ -10,27 +10,75 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function hasRole(role) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    // User profiles - Allow initial creation and reading
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if true; // Allow initial user creation
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    function isGovernmentOfficial() {
+      return hasRole('government');
+    }
+
+    function isFinancialInstitution() {
+      return hasRole('financial');
+    }
+
+    function canViewDocuments() {
+      return isAdmin() || isGovernmentOfficial() || isFinancialInstitution();
+    }
+
     // User profiles
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
+      allow read: if isSignedIn();
+      allow create: if true; // Allow initial user creation
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
       
       match /verificationStatus/{type} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
     // Documents collection
     match /documents/{documentId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        canViewDocuments()
+      );
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
     }
 
     // Activity logs
     match /activityLogs/{logId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
       allow create: if isSignedIn();
+    }
+
+    // Admin management
+    match /adminSettings/{settingId} {
+      allow read, write: if isAdmin();
     }
 
     // Keep existing rules for registration process
@@ -52,4 +100,3 @@ service cloud.firestore {
     }
   }
 }
-

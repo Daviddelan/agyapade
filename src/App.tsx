@@ -9,6 +9,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import Login from './pages/Login';
 import PasswordReset from './pages/PasswordReset';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import Upload from './pages/Upload';
 import Guides from './pages/Guides';
 import Templates from './pages/Templates';
@@ -18,17 +19,28 @@ import LandingPage from './pages/LandingPage';
 import Settings from './pages/Settings';
 import { Toaster } from './components/ui/toaster';
 import { useAuthStore } from './store/useAuthStore';
+import { useRole } from './hooks/useRole';
 
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuthStore();
+function PrivateRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
+  const { user, loading: authLoading } = useAuthStore();
+  const { role, loading: roleLoading } = useRole();
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-golden-500" />
+      </div>
+    );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredRole && role !== requiredRole) {
+    console.log('Access denied. Required role:', requiredRole, 'Current role:', role);
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -57,6 +69,10 @@ function App() {
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/dashboard/upload" element={<PrivateRoute><Upload /></PrivateRoute>} />
         <Route path="/dashboard/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<PrivateRoute requiredRole="admin"><AdminDashboard /></PrivateRoute>} />
+
       </Routes>
       <Toaster />
     </Router>
