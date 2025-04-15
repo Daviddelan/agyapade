@@ -6,6 +6,8 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useToast } from '../hooks/use-toast';
 import { loginWithEmailAndPassword, sendLoginVerificationCode, verifyLoginCode } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 type LoginStep = 'credentials' | 'verification';
 
@@ -24,7 +26,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [verificationCodeSent, setVerificationCodeSent] = useState(false);
 
-  // Show success message if redirected from verification
   React.useEffect(() => {
     const verified = searchParams.get('verified');
     const method = searchParams.get('method');
@@ -44,8 +45,7 @@ export default function Login() {
     setError(null);
 
     try {
-      // First verify credentials
-      await loginWithEmailAndPassword(formData.email, formData.password);
+      const { user, role } = await loginWithEmailAndPassword(formData.email, formData.password);
       
       // Send verification code
       await sendLoginVerificationCode(formData.email);
@@ -94,14 +94,26 @@ export default function Login() {
     try {
       await verifyLoginCode(formData.email, formData.verificationCode);
       
+      // Get user role after verification
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user found');
+      }
+      
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const userData = userDoc.data();
+      
       toast({
         title: "Login Successful",
         description: "Welcome back! You've been logged in successfully.",
         duration: 3000,
       });
 
-      // Navigate to dashboard or home page
-      navigate('/dashboard');
+      // Redirect based on role
+      if (userData?.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to verify code');
     } finally {

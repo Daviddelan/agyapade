@@ -18,36 +18,12 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
-    // User profiles - Allow initial creation and reading
-    match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if true; // Allow initial user creation
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    function isGovernmentOfficial() {
-      return hasRole('government');
-    }
-
-    function isFinancialInstitution() {
-      return hasRole('financial');
-    }
-
-    function canViewDocuments() {
-      return isAdmin() || isGovernmentOfficial() || isFinancialInstitution();
-    }
-
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if true; // Allow initial user creation
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
-      
-      match /verificationStatus/{type} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
     }
 
     // Documents collection
