@@ -80,7 +80,7 @@ export default function Login() {
         duration: 5000,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send verification code');
+      setError(err instanceof Error ? err.message : 'Failed to send the verification code');
     } finally {
       setIsLoading(false);
     }
