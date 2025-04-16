@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import PasswordReset from './pages/PasswordReset';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import GovernmentDashboard from './pages/GovernmentDashboard';
 import Upload from './pages/Upload';
 import Guides from './pages/Guides';
 import Templates from './pages/Templates';
@@ -20,8 +21,6 @@ import Settings from './pages/Settings';
 import { Toaster } from './components/ui/toaster';
 import { useAuthStore } from './store/useAuthStore';
 import { useRole } from './hooks/useRole';
-
-
 
 function PrivateRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
   const { user, loading: authLoading } = useAuthStore();
@@ -65,7 +64,6 @@ function App() {
         <Route path="/faqs" element={<FAQs />} />
         <Route path="/about" element={<About />} />
         
-        
         {/* Protected Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/dashboard/upload" element={<PrivateRoute><Upload /></PrivateRoute>} />
@@ -74,6 +72,8 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute requiredRole="admin"><AdminDashboard /></PrivateRoute>} />
 
+        {/* Government Routes */}
+        <Route path="/government" element={<PrivateRoute requiredRole="government"><GovernmentDashboard /></PrivateRoute>} />
       </Routes>
       <Toaster />
     </Router>

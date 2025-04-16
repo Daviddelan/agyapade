@@ -21,7 +21,8 @@ export function useRole() {
       doc(db, 'users', user.uid),
       (doc) => {
         if (doc.exists()) {
-          setRole(doc.data().role as UserRole || 'user');
+          const userData = doc.data();
+          setRole(userData.role as UserRole || 'user');
         } else {
           setRole('user');
         }
@@ -34,6 +35,7 @@ export function useRole() {
       }
     );
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user]);
 

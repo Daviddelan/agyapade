@@ -6,9 +6,11 @@ import {
   Settings, 
   LogOut,
   User,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useRole } from '../../hooks/useRole';
 import { useInactivityTimer } from '../../hooks/useInactivityTimer';
 
 interface LayoutProps {
@@ -18,6 +20,7 @@ interface LayoutProps {
 export function DashboardLayout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { role } = useRole();
   useInactivityTimer();
 
   const handleLogout = async () => {
@@ -29,11 +32,26 @@ export function DashboardLayout({ children }: LayoutProps) {
     }
   };
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Upload, label: 'Upload', path: '/dashboard/upload' },
-    { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
-  ];
+  const getMenuItems = () => {
+    const baseItems = [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+      { icon: Upload, label: 'Upload', path: '/dashboard/upload' },
+      { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
+    ];
+
+    // Add role-specific items
+    if (role === 'admin') {
+      baseItems[0] = { icon: LayoutDashboard, label: 'Admin Dashboard', path: '/admin' };
+    } else if (role === 'government') {
+      baseItems[0] = { icon: FileText, label: 'Document Review', path: '/government' };
+      // Remove upload option for government users
+      baseItems.splice(1, 1);
+    }
+
+    return baseItems;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
