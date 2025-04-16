@@ -22,8 +22,10 @@ export function useRole() {
       (doc) => {
         if (doc.exists()) {
           const userData = doc.data();
+          console.log('Current user role:', userData.role); // Debug log
           setRole(userData.role as UserRole || 'user');
         } else {
+          console.log('No user document found'); // Debug log
           setRole('user');
         }
         setLoading(false);

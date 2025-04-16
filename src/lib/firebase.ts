@@ -119,7 +119,7 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
             lastName: registrationData.surname,
             title: registrationData.title,
             email: registrationData.email,
-            role: 'user', // Set default role
+            role: registrationData.role || 'user', // Use role from registration if exists
             createdAt: registrationData.createdAt,
             lastLogin: serverTimestamp()
           });
@@ -127,7 +127,7 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
           // If no registration data found, create minimal user document
           await setDoc(doc(db, 'users', userCredential.user.uid), {
             email: userCredential.user.email,
-            role: 'user', // Set default role
+            role: 'user',
             createdAt: serverTimestamp(),
             lastLogin: serverTimestamp()
           });
@@ -139,9 +139,11 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
         });
       }
 
-      // Return the user role
+      // Get the latest user data including role
       const updatedUserDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
       const userData = updatedUserDoc.data();
+      
+      console.log('User role from login:', userData?.role); // Debug log
       
       return {
         user: userCredential.user,
@@ -221,10 +223,10 @@ export const verifyLoginCode = async (email: string, code: string) => {
       }
 
       // Mark code as used
-      await setDoc(doc(verificationRef, verification.id), {
+      await updateDoc(doc(verificationRef, verification.id), {
         used: true,
         usedAt: serverTimestamp()
-      }, { merge: true });
+      });
 
       return true;
     } catch (error) {
@@ -593,7 +595,6 @@ export const createUserProfile = async (userId: string, userData: any) => {
   });
 };
 
-
 export const sendVerificationCode = async (userId: string, recaptchaContainerId: string): Promise<any> => {
   return withRetry(async () => {
     try {
@@ -659,29 +660,29 @@ export const sendVerificationCode = async (userId: string, recaptchaContainerId:
   });
 };
 
-// export const verifyPhoneCode = async (verificationId: string, code: string): Promise<void> => {
-//   return withRetry(async () => {
-//     try {
-//       console.log('Verifying code:', { verificationId });
+export const verifyPhoneCode = async (verificationId: string, code: string): Promise<void> => {
+  return withRetry(async () => {
+    try {
+      console.log('Verifying code:', { verificationId });
       
-//       const credential = PhoneAuthProvider.credential(verificationId, code);
-//       await auth.currentUser?.linkWithCredential(credential);
+      const credential = PhoneAuthProvider.credential(verificationId, code);
+      await auth.currentUser?.linkWithCredential(credential);
       
-//       console.log('Phone number verified successfully');
+      console.log('Phone number verified successfully');
       
-//       // Clean up reCAPTCHA after successful verification
-//       cleanupRecaptcha();
-//     } catch (error: any) {
-//       console.error('Error verifying code:', error);
-//       if (error.code === 'auth/invalid-verification-code') {
-//         throw new Error('Invalid verification code. Please check and try again.');
-//       } else if (error.code === 'auth/code-expired') {
-//         throw new Error('Verification code has expired. Please request a new code.');
-//       }
-//       throw new Error('Failed to verify code. Please try again.');
-//     }
-//   });
-// };
+      // Clean up reCAPTCHA after successful verification
+      cleanupRecaptcha();
+    } catch (error: any) {
+      console.error('Error verifying code:', error);
+      if (error.code === 'auth/invalid-verification-code') {
+        throw new Error('Invalid verification code. Please check and try again.');
+      } else if (error.code === 'auth/code-expired') {
+        throw new Error('Verification code has expired. Please request a new code.');
+      }
+      throw new Error('Failed to verify code. Please try again.');
+    }
+  });
+};
 
 export const getUserData = async (userId: string) => {
   return withRetry(async () => {

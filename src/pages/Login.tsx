@@ -25,6 +25,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationCodeSent, setVerificationCodeSent] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   React.useEffect(() => {
     const verified = searchParams.get('verified');
@@ -46,6 +47,8 @@ export default function Login() {
 
     try {
       const { user, role } = await loginWithEmailAndPassword(formData.email, formData.password);
+      console.log('Login successful, role:', role); // Debug log
+      setUserRole(role);
       
       // Send verification code
       await sendLoginVerificationCode(formData.email);
@@ -101,6 +104,9 @@ export default function Login() {
       
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       const userData = userDoc.data();
+      const role = userData?.role || userRole || 'user';
+      
+      console.log('Verification successful, redirecting with role:', role); // Debug log
       
       toast({
         title: "Login Successful",
@@ -109,12 +115,21 @@ export default function Login() {
       });
 
       // Redirect based on role
-      if (userData?.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
+      switch (role) {
+        case 'admin':
+          console.log('Redirecting to admin dashboard');
+          navigate('/admin');
+          break;
+        case 'government':
+          console.log('Redirecting to government dashboard');
+          navigate('/government');
+          break;
+        default:
+          console.log('Redirecting to regular dashboard');
+          navigate('/dashboard');
       }
     } catch (err) {
+      console.error('Verification error:', err);
       setError(err instanceof Error ? err.message : 'Failed to verify code');
     } finally {
       setIsLoading(false);

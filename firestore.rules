@@ -18,12 +18,32 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
+    function isGovernmentOfficial() {
+      return hasRole('government');
+    }
+
+    function isFinancialInstitution() {
+      return hasRole('financial');
+    }
+
+    function canViewDocuments() {
+      return isAdmin() || isGovernmentOfficial() || isFinancialInstitution();
+    }
+
+    function canReviewDocuments() {
+      return isAdmin() || isGovernmentOfficial();
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if true; // Allow initial user creation
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
+      
+      match /verificationStatus/{type} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     // Documents collection
@@ -35,7 +55,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
-        isAdmin()
+        canReviewDocuments()
       );
       allow delete: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
@@ -52,12 +72,12 @@ service cloud.firestore {
       allow create: if isSignedIn();
     }
 
-    // Admin management
+    // Admin settings
     match /adminSettings/{settingId} {
       allow read, write: if isAdmin();
     }
 
-    // Keep existing rules for registration process
+    // Registration process
     match /tempRegistrations/{sessionId} {
       allow read, write: if true;
     }
@@ -70,9 +90,19 @@ service cloud.firestore {
       }
     }
 
+    // Login verifications
     match /loginVerifications/{docId} {
-      allow read, write: if request.auth != null;
+      // Allow reading verification codes
+      allow read: if true;
+      
+      // Allow creating new verification codes
       allow create: if true;
+      
+      // Allow updating verification status
+      allow update: if true;
+      
+      // Only admin can delete verification codes
+      allow delete: if isAdmin();
     }
   }
 }
