@@ -34,6 +34,15 @@ service cloud.firestore {
       return isAdmin() || isGovernmentOfficial();
     }
 
+    function canModifyDocument(docData) {
+      return isAdmin() || 
+        (isOwner(docData.userId) && docData.status != 'under_review') ||
+        (isGovernmentOfficial() && (
+          docData.status != 'under_review' ||
+          docData.reviewState.reviewerId == request.auth.uid
+        ));
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -54,8 +63,13 @@ service cloud.firestore {
       );
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        canReviewDocuments()
+        canModifyDocument(resource.data) && (
+          !('reviewState' in request.resource.data) || (
+            resource.data.status == 'under_review' ?
+              request.resource.data.reviewState.reviewerId == request.auth.uid :
+              true
+          )
+        )
       );
       allow delete: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
@@ -92,16 +106,9 @@ service cloud.firestore {
 
     // Login verifications
     match /loginVerifications/{docId} {
-      // Allow reading verification codes
       allow read: if true;
-      
-      // Allow creating new verification codes
       allow create: if true;
-      
-      // Allow updating verification status
       allow update: if true;
-      
-      // Only admin can delete verification codes
       allow delete: if isAdmin();
     }
   }

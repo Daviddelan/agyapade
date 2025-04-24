@@ -21,11 +21,15 @@ export default function GovernmentDashboard() {
         );
         
         const snapshot = await getDocs(docsQuery);
-        const docs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          uploadDate: doc.data().uploadDate?.toDate()
-        }));
+        const docs = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            uploadDate: data.uploadDate?.toDate() || new Date(),
+            reviewDate: data.reviewDate?.toDate() || null
+          };
+        });
         
         setDocuments(docs);
       } catch (error) {

@@ -18,13 +18,21 @@ export const ROLES: Record<UserRole, RoleDefinition> = {
     id: 'admin',
     name: 'Administrator',
     description: 'Full system access and user management',
-    permissions: ['*']
+    permissions: [
+      'manage:users',
+      'manage:settings',
+      'review:documents',
+      'verify:documents',
+      'delete:documents',
+      'view:logs',
+      'manage:roles'
+    ]
   },
   government: {
     id: 'government',
     name: 'Government Official',
     description: 'Can view and verify land documents',
-    permissions: ['read:all', 'verify:documents']
+    permissions: ['read:all', 'verify:documents', 'review:documents']
   },
   financial: {
     id: 'financial',

@@ -34,7 +34,6 @@ export function DocumentUpload() {
     const selectedFile = acceptedFiles[0];
     if (selectedFile && selectedFile.size <= MAX_FILE_SIZE) {
       setFile(selectedFile);
-      // Auto-fill name if empty
       if (!formData.name) {
         setFormData(prev => ({
           ...prev,
@@ -65,12 +64,22 @@ export function DocumentUpload() {
 
     setUploading(true);
     try {
-      // Generate unique file name
-      const fileName = `${Date.now()}_${file.name}`;
+      // Generate unique file name with timestamp
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
       const storageRef = ref(storage, `collaterals/${user.uid}/${fileName}`);
       
-      // Upload file
-      const snapshot = await uploadBytes(storageRef, file);
+      // Set custom metadata
+      const metadata = {
+        customMetadata: {
+          userId: user.uid,
+          documentType: formData.type,
+          uploadDate: new Date().toISOString()
+        }
+      };
+      
+      // Upload file with metadata
+      const snapshot = await uploadBytes(storageRef, file, metadata);
       const fileUrl = await getDownloadURL(snapshot.ref);
       
       // Create document record
@@ -96,7 +105,7 @@ export function DocumentUpload() {
       console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading your document",
+        description: "There was an error uploading your document. Please try again.",
         variant: "destructive"
       });
     } finally {
