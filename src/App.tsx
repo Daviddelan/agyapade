@@ -22,11 +22,7 @@ import { Toaster } from './components/ui/toaster';
 import { useAuthStore } from './store/useAuthStore';
 import { useRole } from './hooks/useRole';
 
-function PrivateRoute({ children, requiredRole, allowedRoles = [] }: { 
-  children: React.ReactNode, 
-  requiredRole?: string,
-  allowedRoles?: string[]
-}) {
+function PrivateRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) {
   const { user, loading: authLoading } = useAuthStore();
   const { role, loading: roleLoading } = useRole();
 
@@ -42,34 +38,9 @@ function PrivateRoute({ children, requiredRole, allowedRoles = [] }: {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if the route requires a specific role
   if (requiredRole && role !== requiredRole) {
     console.log('Access denied. Required role:', requiredRole, 'Current role:', role);
-    
-    // Redirect based on user's role
-    switch (role) {
-      case 'admin':
-        return <Navigate to="/admin" replace />;
-      case 'government':
-        return <Navigate to="/government" replace />;
-      default:
-        return <Navigate to="/dashboard" replace />;
-    }
-  }
-
-  // Check if the user's role is allowed for this route
-  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    console.log('Access denied. Allowed roles:', allowedRoles, 'Current role:', role);
-    
-    // Redirect based on user's role
-    switch (role) {
-      case 'admin':
-        return <Navigate to="/admin" replace />;
-      case 'government':
-        return <Navigate to="/government" replace />;
-      default:
-        return <Navigate to="/dashboard" replace />;
-    }
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -94,50 +65,15 @@ function App() {
         <Route path="/about" element={<About />} />
         
         {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <PrivateRoute allowedRoles={['user']}>
-              <Dashboard />
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/dashboard/upload" 
-          element={
-            <PrivateRoute allowedRoles={['user']}>
-              <Upload />
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/dashboard/settings" 
-          element={
-            <PrivateRoute>
-              <Settings />
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/dashboard/upload" element={<PrivateRoute><Upload /></PrivateRoute>} />
+        <Route path="/dashboard/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
 
         {/* Admin Routes */}
-        <Route 
-          path="/admin" 
-          element={
-            <PrivateRoute requiredRole="admin">
-              <AdminDashboard />
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/admin" element={<PrivateRoute requiredRole="admin"><AdminDashboard /></PrivateRoute>} />
 
         {/* Government Routes */}
-        <Route 
-          path="/government" 
-          element={
-            <PrivateRoute requiredRole="government">
-              <GovernmentDashboard />
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/government" element={<PrivateRoute requiredRole="government"><GovernmentDashboard /></PrivateRoute>} />
       </Routes>
       <Toaster />
     </Router>
